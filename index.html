@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Converta imagens em emotes da Twitch: PNG 112x112, 56x56 e 28x28 em um zip.">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{color-scheme:light}</style>
+<title>Forja de Emotes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: ferramenta de uma coluna — barra de controles, zona de soltar, lista de emotes com prévias reais por tamanho */
+:root{
+  --bg:#f3f2f7; --surface:#ffffff; --fg:#17151f; --muted:#5d596b; --line:#dcd9e5;
+  --accent:#e2571d; --accent-fg:#ffffff; --accent-soft:#fde7dc;
+  --warn:#9a5b00; --warn-bg:#fff2d6; --ok:#1f7a4d;
+  --chat-dark:#18181b; --chat-light:#ffffff; --check:#e7e5ee;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121118; --surface:#1c1a24; --fg:#ece9f5; --muted:#a29db3; --line:#2f2c3b;
+  --accent:#ff7a3d; --accent-fg:#1a0d06; --accent-soft:#3a2216;
+  --warn:#f3c26b; --warn-bg:#3a2d12; --ok:#5fd39a; --check:#26232f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121118; --surface:#1c1a24; --fg:#ece9f5; --muted:#a29db3; --line:#2f2c3b;
+  --accent:#ff7a3d; --accent-fg:#1a0d06; --accent-soft:#3a2216;
+  --warn:#f3c26b; --warn-bg:#3a2d12; --ok:#5fd39a; --check:#26232f; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:24px}
+header{display:grid;gap:6px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,5vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:0;max-width:62ch}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.group{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--fg);font:inherit;font-size:14px;padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:14px;cursor:pointer}
+.spacer{flex:1}
+.btn{font:inherit;font-weight:600;font-size:14px;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:28px 16px;text-align:center;display:grid;gap:6px;justify-items:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{font-family:var(--f-display);font-size:20px;font-weight:600}
+.drop span{color:var(--muted);font-size:14px}
+.list{display:grid;gap:14px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px}
+.src{width:120px;height:120px;border-radius:8px;background:repeating-conic-gradient(var(--check) 0 25%,transparent 0 50%) 0 0/16px 16px;display:grid;place-items:center;overflow:hidden}
+.src img{max-width:100%;max-height:100%}
+.meta{display:grid;gap:10px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.name{font:inherit;font-family:var(--f-mono);font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);min-width:0;flex:1 1 180px}
+.tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.tag.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.tag.ex{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.previews{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chat{border-radius:8px;padding:10px 12px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;border:1px solid var(--line)}
+.chat.dark{background:var(--chat-dark);color:#efeff1}
+.chat.light{background:var(--chat-light);color:#0e0e10}
+.chat figure{margin:0;display:grid;gap:4px;justify-items:center}
+.chat figcaption{font-family:var(--f-mono);font-size:11px;opacity:.7}
+.chat canvas{display:block;image-rendering:auto}
+.chat.inline{font-size:13px;align-items:center;gap:4px}
+.chat.inline canvas{display:inline-block;vertical-align:middle}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px}
+.empty{color:var(--muted);text-align:center;padding:12px}
+.status{font-size:14px;color:var(--muted);min-height:1.5em}
+.status.ok{color:var(--ok)} .status.err{color:var(--warn)}
+.notes{color:var(--muted);font-size:13px;display:grid;gap:4px;max-width:70ch}
+.notes p{margin:0}
+@media (max-width:640px){
+  .item{grid-template-columns:1fr}
+  .src{width:96px;height:96px}
+  .previews{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Forja de Emotes</h1>
+    <p class="sub">Solte suas imagens e baixe cada emote pronto em <span class="mono">112×112</span>, <span class="mono">56×56</span> e <span class="mono">28×28</span> PNG, no formato que o upload manual da Twitch pede.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="Opções de exportação">
+    <div class="group">
+      <span class="label">Tipo</span>
+      <div class="seg" id="preset">
+        <button type="button" data-p="emote" aria-pressed="true">Emote · 112/56/28</button>
+        <button type="button" data-p="badge" aria-pressed="false">Insígnia · 72/36/18</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Exportar</span>
+      <div class="seg" id="sizes" aria-label="Tamanhos para exportar"></div>
+    </div>
+    <div class="group">
+      <span class="label">Não quadrada</span>
+      <div class="seg" id="fit">
+        <button type="button" data-f="contain" aria-pressed="true">Encaixar</button>
+        <button type="button" data-f="cover" aria-pressed="false">Cortar centro</button>
+      </div>
+    </div>
+    <label class="chk"><input type="checkbox" id="pixel"> Pixel art (sem suavizar)</label>
+    <label class="chk"><input type="checkbox" id="trim"> Remover borda transparente</label>
+    <span class="spacer"></span>
+    <button type="button" class="btn primary" id="zipAll">Baixar todos (.zip)</button>
+  </div>
+
+  <label class="drop" id="drop" for="file">
+    <strong>Solte os emotes aqui</strong>
+    <span>ou clique para escolher · PNG, JPG, WEBP ou GIF · vários de uma vez</span>
+    <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+  </label>
+
+  <div class="status" id="status" role="status"></div>
+  <div class="list" id="list"></div>
+
+  <div class="notes">
+    <p>Use uma imagem de pelo menos 112 px (de preferência 448 px ou maior). Abaixo disso a imagem é ampliada e perde nitidez.</p>
+    <p>GIF animado é exportado só com o primeiro quadro. A redução é feita em etapas para manter as bordas limpas no 28×28.</p>
+    <p>Os arquivos ficam no seu navegador: nada é enviado para servidor.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const PRESETS = { emote:[112,56,28], badge:[72,36,18] };
+  const state = { preset:"emote", fit:"contain", pixel:false, trim:false, items:[], sel:new Set(PRESETS.emote) };
+  function drawSizes(){
+    const box = document.querySelector("#sizes"); box.innerHTML = "";
+    for (const s of PRESETS[state.preset]){
+      const b = document.createElement("button"); b.type = "button"; b.className = "mono"; b.textContent = `${s}×${s}`;
+      b.setAttribute("aria-pressed", String(state.sel.has(s)));
+      b.addEventListener("click", () => { state.sel.has(s) ? state.sel.delete(s) : state.sel.add(s); drawSizes(); });
+      box.append(b);
+    }
+  }
+  const $ = s => document.querySelector(s);
+  const list = $("#list"), statusEl = $("#status");
+  const downloads = { save: async ({ filename, data }) => {
+    const url = URL.createObjectURL(data), a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return { status: "saved" };
+  } };
+
+  function setStatus(t, cls){ statusEl.textContent = t || ""; statusEl.className = "status" + (cls ? " " + cls : ""); }
+  const slug = s => (s || "emote").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\.[a-z0-9]+$/i,"").replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,40) || "emote";
+
+  // ---------- imagem ----------
+  function loadImage(src){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+
+  function trimBox(img){
+    const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const x = c.getContext("2d"); x.drawImage(img,0,0);
+    const d = x.getImageData(0,0,c.width,c.height).data;
+    let minX=c.width, minY=c.height, maxX=-1, maxY=-1;
+    for (let y=0;y<c.height;y++) for (let xx=0;xx<c.width;xx++) if (d[(y*c.width+xx)*4+3] > 8){ if(xx<minX)minX=xx; if(xx>maxX)maxX=xx; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+    if (maxX < 0) return {x:0,y:0,w:c.width,h:c.height};
+    return {x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1};
+  }
+
+  // Desenha a origem num quadrado grande (lado = maior dimensão), aplicando encaixar/cortar
+  function squareSource(item){
+    const img = item.img;
+    const box = state.trim ? (item.trimBox ||= trimBox(img)) : {x:0,y:0,w:img.naturalWidth,h:img.naturalHeight};
+    let side, sx=box.x, sy=box.y, sw=box.w, sh=box.h, dx=0, dy=0, dw, dh;
+    if (state.fit === "cover"){
+      side = Math.min(box.w, box.h);
+      sx = box.x + (box.w-side)/2; sy = box.y + (box.h-side)/2; sw = sh = side; dw = dh = side;
+    } else {
+      side = Math.max(box.w, box.h);
+      dw = box.w; dh = box.h; dx = (side-box.w)/2; dy = (side-box.h)/2;
+    }
+    const c = document.createElement("canvas"); c.width = c.height = Math.max(1, Math.round(side));
+    const x = c.getContext("2d"); x.imageSmoothingEnabled = !state.pixel;
+    x.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    return c;
+  }
+
+  // Redução em etapas de no máximo 2× para evitar serrilhado
+  function resize(src, size){
+    let cur = src;
+    if (!state.pixel){
+      while (cur.width / 2 > size){
+        const n = document.createElement("canvas"); n.width = n.height = Math.max(size, Math.floor(cur.width/2));
+        const x = n.getContext("2d"); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
+        x.drawImage(cur, 0, 0, n.width, n.height); cur = n;
+      }
+    }
+    const out = document.createElement("canvas"); out.width = out.height = size;
+    const x = out.getContext("2d"); x.imageSmoothingEnabled = !state.pixel; x.imageSmoothingQuality = "high";
+    x.drawImage(cur, 0, 0, size, size);
+    return out;
+  }
+
+  function render(item){
+    const sq = squareSource(item);
+    item.outputs = PRESETS[state.preset].map(s => ({ size:s, canvas:resize(sq, s) }));
+  }
+
+  // ---------- UI ----------
+  function draw(){
+    list.innerHTML = "";
+    $("#zipAll").disabled = state.items.length === 0;
+    if (!state.items.length){ const p = document.createElement("p"); p.className = "empty"; p.textContent = "Nenhum emote ainda. Solte imagens acima."; list.append(p); return; }
+    for (const item of state.items){ render(item); list.append(card(item)); }
+  }
+
+  function cloneCanvas(c){ const n = document.createElement("canvas"); n.width = c.width; n.height = c.height; n.getContext("2d").drawImage(c,0,0); return n; }
+
+  function card(item){
+    const el = document.createElement("article"); el.className = "item";
+    const src = document.createElement("div"); src.className = "src";
+    const im = document.createElement("img"); im.src = item.url; im.alt = "Imagem original de " + item.name; src.append(im);
+
+    const meta = document.createElement("div"); meta.className = "meta";
+    const r1 = document.createElement("div"); r1.className = "row";
+    const name = document.createElement("input"); name.className = "name"; name.id = "name-" + item.id; name.value = item.name; name.setAttribute("aria-label","Nome do emote");
+    name.addEventListener("change", () => { item.name = slug(name.value); name.value = item.name; });
+    r1.append(name);
+    const w = item.img.naturalWidth, h = item.img.naturalHeight;
+    const tags = [[`${w}×${h}`, ""]];
+    if (item.example) tags.push(["exemplo", "ex"]);
+    if (Math.min(w,h) < PRESETS[state.preset][0]) tags.push(["pequena: será ampliada", "warn"]);
+    if (w !== h) tags.push(["não quadrada", "warn"]);
+    if (item.gif) tags.push(["GIF: só 1º quadro", "warn"]);
+    for (const [t,c] of tags){ const s = document.createElement("span"); s.className = "tag mono" + (c ? " " + c : ""); s.textContent = t; r1.append(s); }
+
+    const pv = document.createElement("div"); pv.className = "previews";
+    for (const mode of ["dark","light"]){
+      const box = document.createElement("div"); box.className = "chat " + mode;
+      for (const o of item.outputs){
+        const f = document.createElement("figure"); f.append(cloneCanvas(o.canvas));
+        const cap = document.createElement("figcaption"); cap.textContent = `${o.size}×${o.size}`; f.append(cap); box.append(f);
+      }
+      pv.append(box);
+    }
+    // prévia no chat em tamanho real (28px)
+    for (const mode of ["dark","light"]){
+      const line = document.createElement("div"); line.className = "chat inline " + mode;
+      const small = item.outputs[item.outputs.length-1].canvas;
+      const b = document.createElement("b"); b.textContent = "viewer:"; line.append(b, document.createTextNode(" boa partida "), cloneCanvas(small), document.createTextNode(" gg"));
+      pv.append(line);
+    }
+
+    const act = document.createElement("div"); act.className = "actions";
+    const dl = document.createElement("button"); dl.type = "button"; dl.className = "btn"; dl.textContent = "Baixar este (.zip)";
+    dl.addEventListener("click", () => exportZip([item], `${item.name}.zip`));
+    const rm = document.createElement("button"); rm.type = "button"; rm.className = "link"; rm.textContent = "Remover";
+    rm.addEventListener("click", () => { URL.revokeObjectURL(item.url); state.items = state.items.filter(i => i !== item); draw(); });
+    act.append(dl, rm);
+
+    meta.append(r1, pv, act);
+    el.append(src, meta);
+    return el;
+  }
+
+  let nextId = 1;
+  async function addFiles(files){
+    const imgs = [...files].filter(f => /^image\//.test(f.type));
+    if (!imgs.length){ setStatus("Nenhuma imagem reconhecida. Use PNG, JPG, WEBP ou GIF.", "err"); return; }
+    state.items = state.items.filter(i => !i.example);
+    for (const f of imgs){
+      const url = URL.createObjectURL(f);
+      try {
+        const img = await loadImage(url);
+        state.items.push({ id: nextId++, name: slug(f.name), url, img, gif: f.type === "image/gif" });
+      } catch(e){ setStatus(`Não consegui abrir ${f.name}.`, "err"); }
+    }
+    setStatus(`${state.items.length} emote(s) prontos.`, "ok");
+    draw();
+  }
+
+  // ---------- ZIP (sem compressão; PNG já é comprimido) ----------
+  const CRC = (() => { const t = new Uint32Array(256); for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c = c & 1 ? 0xEDB88320 ^ (c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i=0;i<b.length;i++) c = CRC[(c ^ b[i]) & 255] ^ (c>>>8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function makeZip(entries){
+    const enc = new TextEncoder(), parts = [], central = [];
+    const d = new Date(), time = (d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1), date = ((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+    let offset = 0;
+    for (const e of entries){
+      const name = enc.encode(e.name), crc = crc32(e.data), len = e.data.length;
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(8,0,true);
+      lh.setUint16(10,time,true); lh.setUint16(12,date,true); lh.setUint32(14,crc,true); lh.setUint32(18,len,true); lh.setUint32(22,len,true);
+      lh.setUint16(26,name.length,true); lh.setUint16(28,0,true);
+      parts.push(new Uint8Array(lh.buffer), name, e.data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true);
+      ch.setUint16(12,time,true); ch.setUint16(14,date,true); ch.setUint32(16,crc,true); ch.setUint32(20,len,true); ch.setUint32(24,len,true);
+      ch.setUint16(28,name.length,true); ch.setUint32(42,offset,true);
+      central.push(new Uint8Array(ch.buffer), name);
+      offset += 30 + name.length + len;
+    }
+    const csize = central.reduce((a,b)=>a+b.length,0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0,0x06054b50,true); end.setUint16(8,entries.length,true); end.setUint16(10,entries.length,true);
+    end.setUint32(12,csize,true); end.setUint32(16,offset,true);
+    return new Blob([...parts, ...central, new Uint8Array(end.buffer)], {type:"application/zip"});
+  }
+  const toPng = c => new Promise(r => c.toBlob(b => b.arrayBuffer().then(a => r(new Uint8Array(a))), "image/png"));
+
+  async function exportZip(items, filename){
+    if (!state.sel.size){ setStatus("Escolha pelo menos um tamanho em Exportar.", "err"); return; }
+    const sizes = PRESETS[state.preset].filter(s => state.sel.has(s));
+    if (sizes.length === 1) filename = filename.replace(/\.zip$/, `_${sizes[0]}x${sizes[0]}.zip`);
+    const entries = [], used = new Set();
+    for (const it of items){
+      let base = it.name, n = 2; while (used.has(base)) base = `${it.name}_${n++}`; used.add(base);
+      for (const o of it.outputs.filter(o => state.sel.has(o.size))){
+        const data = await toPng(o.canvas);
+        entries.push({ name: `${base}_${o.size}x${o.size}.png`, data });
+        if (data.length > 1024*1024) setStatus(`${base} ${o.size}px passou de 1 MB, limite da Twitch.`, "err");
+      }
+    }
+    try {
+      await downloads.save({ filename, data: makeZip(entries) });
+      setStatus(`Salvo: ${filename} (${entries.length} PNGs).`, "ok");
+    } catch(e){
+      const msg = { declined:"Download cancelado.", rate_limited:"Já existe uma confirmação aberta. Responda a ela e tente de novo." }[e?.code] || "Não foi possível salvar o arquivo aqui.";
+      setStatus(msg, "err");
+    }
+  }
+
+  // ---------- eventos ----------
+  const drop = $("#drop"), file = $("#file");
+  file.addEventListener("change", () => { addFiles(file.files); file.value = ""; });
+  ["dragenter","dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+  document.addEventListener("paste", e => { const f = [...(e.clipboardData?.files || [])]; if (f.length) addFiles(f); });
+
+  function seg(id, key, attr){
+    $(id).addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      state[key] = b.dataset[attr];
+      if (key === "preset"){ state.sel = new Set(PRESETS[state.preset]); drawSizes(); }
+      $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      draw();
+    });
+  }
+  seg("#preset","preset","p"); seg("#fit","fit","f"); drawSizes();
+  $("#pixel").addEventListener("change", e => { state.pixel = e.target.checked; draw(); });
+  $("#trim").addEventListener("change", e => { state.trim = e.target.checked; draw(); });
+  $("#zipAll").addEventListener("click", () => exportZip(state.items, state.preset === "badge" ? "insignias_twitch.zip" : "emotes_twitch.zip"));
+
+  // ---------- exemplo inicial (some quando você adiciona os seus) ----------
+  (async () => {
+    const c = document.createElement("canvas"); c.width = c.height = 448; const x = c.getContext("2d");
+    x.fillStyle = "#ffc93c"; x.beginPath(); x.arc(224,224,200,0,Math.PI*2); x.fill();
+    x.lineWidth = 16; x.strokeStyle = "#5a3a00"; x.stroke();
+    x.fillStyle = "#3a2600"; x.beginPath(); x.ellipse(160,190,26,40,0,0,Math.PI*2); x.ellipse(288,190,26,40,0,0,Math.PI*2); x.fill();
+    x.beginPath(); x.lineWidth = 22; x.lineCap = "round"; x.arc(224,250,110,0.15*Math.PI,0.85*Math.PI); x.stroke();
+    x.fillStyle = "#ff8a5c"; x.globalAlpha = .55; x.beginPath(); x.arc(120,270,30,0,Math.PI*2); x.arc(328,270,30,0,Math.PI*2); x.fill();
+    const url = c.toDataURL("image/png"); const img = await loadImage(url);
+    state.items.push({ id: nextId++, name: "exemplo_sorriso", url, img, example:true });
+    draw();
+  })();
+})();
+</script>
+
+</body>
+</html>
