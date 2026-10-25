@@ -1,4 +1,3 @@
-// Gera um arquivo .zip sem compressão (PNG e GIF já são comprimidos).
 (function (Forja) {
   "use strict";
 
@@ -18,7 +17,6 @@
     return (c ^ 0xFFFFFFFF) >>> 0;
   }
 
-  /** @param {{name: string, data: Uint8Array}[]} entries */
   function makeZip(entries) {
     const enc = new TextEncoder();
     const parts = [], central = [];

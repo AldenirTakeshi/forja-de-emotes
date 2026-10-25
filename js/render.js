@@ -1,8 +1,7 @@
-// Enquadramento (corte/zoom) e redimensionamento de alta qualidade.
 (function (Forja) {
   "use strict";
 
-  const MAX_WORK = 2048; // lado máximo do quadro intermediário
+  const MAX_WORK = 2048;
 
   function canvas(w, h) {
     const c = document.createElement("canvas");
@@ -11,7 +10,6 @@
     return c;
   }
 
-  /** Caixa dos pixels visíveis (alpha > 8). Para GIF, considera todos os quadros. */
   function trimBox(sources, w, h) {
     let minX = w, minY = h, maxX = -1, maxY = -1;
     for (const src of sources) {
@@ -31,18 +29,12 @@
     return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
   }
 
-  /**
-   * Geometria do corte quadrado, em pixels da caixa de origem.
-   * crop = { zoom, cx, cy } — cx/cy são o centro normalizado (0–1) dentro da caixa.
-   * fit "contain" parte da imagem inteira dentro do quadrado; "cover" parte do quadrado preenchido.
-   */
   function cropRect(box, crop, fit) {
     const base = fit === "cover" ? Math.min(box.w, box.h) : Math.max(box.w, box.h);
     const side = base / crop.zoom;
     return { side, x0: crop.cx * box.w - side / 2, y0: crop.cy * box.h - side / 2 };
   }
 
-  /** Desenha o corte num quadrado N×N. */
   function drawCrop(src, box, crop, fit, N, pixel, target) {
     const out = target || canvas(N, N);
     const ctx = out.getContext("2d");
@@ -54,13 +46,11 @@
     return out;
   }
 
-  /** Lado de trabalho: resolução real do corte, limitada. */
   function workSide(box, crop, fit, minSize) {
     const r = cropRect(box, crop, fit);
     return Math.max(minSize, Math.min(MAX_WORK, Math.round(r.side)));
   }
 
-  /** Reduz em etapas de no máximo 2× para evitar serrilhado. */
   function resize(src, size, pixel) {
     let cur = src;
     if (!pixel) {

@@ -1,11 +1,10 @@
-// Editor de corte: arrastar para mover, roda do mouse ou controle para zoom.
 (function (Forja) {
   "use strict";
   const R = Forja.render;
   const ZMIN = 0.5, ZMAX = 8;
 
   let dlg, stage, stageCanvas, zoomInput, zoomOut, prevBox, title, applyBtn, cancelBtn, centerBtn, resetBtn;
-  let ctx = null; // sessão atual
+  let ctx = null;
 
   function build() {
     dlg = document.getElementById("cropDialog");
@@ -20,7 +19,6 @@
     centerBtn = dlg.querySelector("#cropCenter");
     resetBtn = dlg.querySelector("#cropReset");
 
-    // Zoom em escala logarítmica no controle deslizante
     zoomInput.addEventListener("input", () => setZoom(Math.exp(+zoomInput.value)));
 
     let drag = null;
@@ -55,7 +53,6 @@
     dlg.addEventListener("close", () => { ctx = null; });
   }
 
-  /** Move o corte acompanhando o arraste (dx, dy em pixels de tela). */
   function pan(dx, dy) {
     const r = R.cropRect(ctx.box, ctx.crop, ctx.settings.fit);
     const scale = r.side / stage.clientWidth;
@@ -82,11 +79,6 @@
     });
   }
 
-  /**
-   * @param item     emote (usa item.name, item.source(), item.box)
-   * @param settings { fit, pixel, sizes }
-   * @param onApply  recebe o novo crop
-   */
   function open(item, settings, onApply) {
     if (!dlg) build();
     ctx = { src: item.frames ? item.frames[0].canvas : item.img, box: item.box, crop: { ...item.crop }, settings, onApply };

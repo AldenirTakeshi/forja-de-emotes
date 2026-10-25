@@ -1,4 +1,3 @@
-// Forja de Emotes — interface principal.
 (function (Forja) {
   "use strict";
   const R = Forja.render;
@@ -31,7 +30,6 @@
 
   const fmtBytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : (n / 1048576).toFixed(2) + " MB";
 
-  // ---------- animação das prévias ----------
   const anims = [];
   function tick(now) {
     for (const a of anims) {
@@ -53,7 +51,6 @@
     return c;
   }
 
-  // ---------- processamento ----------
   function updateBox(item) {
     const srcs = item.frames ? item.frames.map(f => f.canvas) : [item.img];
     item.box = state.trim
@@ -61,7 +58,6 @@
       : { x: 0, y: 0, w: item.w, h: item.h };
   }
 
-  /** Gera os quadros finais de todos os tamanhos (com cache). */
   function render(item) {
     updateBox(item);
     const key = JSON.stringify([state.preset, state.fit, state.pixel, state.trim, item.crop]);
@@ -77,7 +73,6 @@
     return result;
   }
 
-  // ---------- interface ----------
   function drawSizes() {
     const box = $("#sizes");
     box.innerHTML = "";
@@ -187,7 +182,6 @@
     return el;
   }
 
-  // ---------- entrada de arquivos ----------
   function loadImage(src) {
     return new Promise((res, rej) => {
       const i = new Image();
@@ -224,7 +218,6 @@
     draw();
   }
 
-  // ---------- exportação ----------
   const toPng = c => new Promise(r => c.toBlob(b => b.arrayBuffer().then(a => r(new Uint8Array(a))), "image/png"));
   const nextFrame = () => new Promise(r => setTimeout(r, 0));
 
@@ -260,7 +253,6 @@
     else setStatus(`Baixado: ${filename} (${entries.length} arquivo${entries.length > 1 ? "s" : ""}).`, "ok");
   }
 
-  // ---------- eventos ----------
   const drop = $("#drop"), file = $("#file");
   file.addEventListener("change", () => { addFiles(file.files); file.value = ""; });
   ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
@@ -289,7 +281,6 @@
   $("#trim").addEventListener("change", e => { state.trim = e.target.checked; draw(); });
   $("#zipAll").addEventListener("click", () => exportZip(state.items, state.preset === "badge" ? "insignias_twitch.zip" : "emotes_twitch.zip"));
 
-  // ---------- exemplo inicial (some quando você adiciona os seus) ----------
   (async () => {
     if (!Forja.EXAMPLE) return draw();
     try {

@@ -1,9 +1,7 @@
-// Leitura e escrita de GIF animado (usa vendor/gifuct.min.js e vendor/gifenc.min.js).
 (function (Forja) {
   "use strict";
   const { canvas } = Forja.render;
 
-  /** Decodifica um GIF em quadros completos (já compostos). */
   function decode(buffer) {
     const gif = GifUct.parseGIF(buffer);
     const raw = GifUct.decompressFrames(gif, true);
@@ -29,20 +27,17 @@
 
       const fc = canvas(w, h);
       fc.getContext("2d").drawImage(main, 0, 0);
-      // Navegadores tratam atrasos de 0–10 ms como 100 ms.
       frames.push({ canvas: fc, delay: f.delay > 10 ? f.delay : 100 });
       prev = f;
     }
     return { w, h, frames };
   }
 
-  /** Codifica quadros quadrados (canvas size×size) num GIF com paleta global e transparência. */
   function encode(canvases, delays) {
     const { GIFEncoder, quantize, applyPalette } = GifEnc;
     const size = canvases[0].width;
     const datas = canvases.map(c => c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, size, size).data);
 
-    // Paleta única para todos os quadros: evita cores "pulando" entre quadros.
     const all = new Uint8ClampedArray(datas.reduce((a, d) => a + d.length, 0));
     let o = 0;
     for (const d of datas) { all.set(d, o); o += d.length; }
